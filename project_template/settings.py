@@ -121,7 +121,7 @@ LANGUAGES = (
 # A boolean that turns on/off debug mode. When set to ``True``, stack traces
 # are displayed for error pages. Should always be set to ``False`` in
 # production. Best set to ``True`` in local_settings.py
-DEBUG = False
+DEBUG = True
 
 # Whether a user's session cookie expires when the Web browser is closed.
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
@@ -165,17 +165,18 @@ FILE_UPLOAD_PERMISSIONS = 0o644
 DATABASES = {
     "default": {
         # Add "postgresql_psycopg2", "mysql", "sqlite3" or "oracle".
-        "ENGINE": "django.db.backends.",
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
         # DB name or path to database file if using sqlite3.
-        "NAME": "",
+        "NAME": "mezzanine_mailchimp",
         # Not used with sqlite3.
         "USER": "",
         # Not used with sqlite3.
         "PASSWORD": "",
         # Set to empty string for localhost. Not used with sqlite3.
-        "HOST": "",
+        "HOST": "localhost",
         # Set to empty string for default. Not used with sqlite3.
         "PORT": "",
+        "ATOMIC_REQUESTS": True,
     }
 }
 
@@ -399,11 +400,22 @@ try:
 except ImportError:
     pass
 
+# Make these unique, and don't share it with anybody.
+SECRET_KEY = "%(SECRET_KEY)s"
+NEVERCACHE_KEY = "%(NEVERCACHE_KEY)s"
+
 CRISPY_TEMPLATE_PACK = 'bootstrap'
 # for functional tests
 INSTALLED_APPS = list(INSTALLED_APPS) + [
     PACKAGE_NAME_GRAPPELLI, PACKAGE_NAME_FILEBROWSER,
     'django.contrib.redirects']
+
+from django import get_version
+if int(get_version().split('.')[1]) <= 5:
+    TEST_RUNNER = 'discover_runner.DiscoverRunner'
+    TEST_DISCOVER_PATTERN = "test_*.py"
+else:
+    TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
 ####################
 # DYNAMIC SETTINGS #
