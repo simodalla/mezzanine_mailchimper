@@ -18,7 +18,6 @@ class List(MailchimperModel, TimeStamped):
                                 editable=False, null=True)
     name = models.CharField(_('name'), max_length=300, unique=True)
 
-
     class Meta:
         ordering = ['name']
         verbose_name = _('list')
@@ -44,3 +43,6 @@ class List(MailchimperModel, TimeStamped):
             pass
         return result
 
+
+class Member(MailchimperModel, models.Model):
+    pass

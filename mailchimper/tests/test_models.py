@@ -28,15 +28,14 @@ RESPONSE_ERROR = {
              "Please try again later."}
 
 
-
 class ListModelTest(TestCase):
     def setUp(self):
         pass
 
     def test_str(self):
-        list = List()
-        list.name = 'list 1'
-        self.assertEqual(list.__str__(), list.name)
+        list_obj = List()
+        list_obj.name = 'list 1'
+        self.assertEqual(list.__str__(), list_obj.name)
 
     @patch('mailchimper.models.List.mailchimper')
     def test_make_import_new_lists(self, mock_mailchimper):
