@@ -36,4 +36,3 @@ class MailchimperModelTest(unittest.TestCase):
         self.assertRaises(ImproperlyConfigured,
                           self.dmm.__getattribute__, 'mailchimper')
         mock_settings.use_editable.assert_called_once_with()
-

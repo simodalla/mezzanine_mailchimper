@@ -7,9 +7,10 @@ try:
 except ImportError:
     from mock import patch
 
+from django.contrib.auth.models import User
 from django.test import TestCase
 
-from ..models import List
+from ..models import List, Member
 
 
 LIST_RESULT = {
@@ -28,6 +29,63 @@ RESPONSE_ERROR = {
              "Please try again later."}
 
 
+class MemberModelTest(TestCase):
+    def setUp(self):
+        email = 'mamber1@example.com'
+        self.user = User.objects.create_user('member1', email=email)
+        self.member = Member(email=self.user.email, content_object=self.user)
+        self.member.save()
+
+    def test_str(self):
+        member = Member()
+        member.email = 'member@example.com'
+        self.assertEqual(member.__str__(), member.email)
+
+    def test_get_object_link(self):
+        url = '/fake-url/'
+        self.assertEqual(
+            self.member.get_object_link(url),
+            '<a href="{url}">{member.content_type.name}: {member.'
+            'content_object}</a>'.format(url=url, member=self.member))
+
+    @patch('mailchimper.models.Member.get_object_link')
+    @patch('mailchimper.models.reverse')
+    @patch('mailchimper.models.admin_urlname')
+    def test_object_admin_link(
+            self, mock_admin_urlname, mock_reverse, mock_get_object_link):
+        view = 'changelist'
+        url = '%s%s' % ('admin:app_model_', view)
+        object_link = '<a>fake</a>'
+        mock_admin_urlname.return_value = url
+        mock_reverse.return_value = url
+        mock_get_object_link.return_value = object_link
+        self.assertEqual(self.member.get_object_admin_link(), object_link)
+        mock_admin_urlname.assert_is_called_once_with(
+            self.member.content_object._meta, view)
+        mock_get_object_link.assert_called_once_with(
+            '%s?id=%s' % (url, self.member.object_id))
+
+    @patch('mailchimper.models.Member.get_object_link')
+    @patch('django.contrib.auth.models.User.get_absolute_url')
+    def test_object_site_url(self, mock_absolute_url, mock_get_object_link):
+        url = '/fake-absolute_url'
+        object_link = '<a>fake</a>'
+        mock_absolute_url.return_value = url
+        mock_get_object_link.return_value = object_link
+        self.assertEqual(self.member.get_object_site_link(), object_link)
+        mock_absolute_url.assert_called_once_with()
+        mock_get_object_link.assert_called_once_with(url)
+
+    @patch('mailchimper.models.Member.get_object_link')
+    @patch('django.contrib.auth.models.User.get_absolute_url')
+    def test_object_site_url_return_empty_string(
+            self, mock_absolute_url, mock_get_object_link):
+        mock_absolute_url.side_effect = AttributeError('Boom!')
+        self.assertEqual(self.member.get_object_site_link(), '')
+        mock_absolute_url.assert_called_once_with()
+        self.assertEqual(len(mock_get_object_link.mock_calls), 0)
+
+
 class ListModelTest(TestCase):
     def setUp(self):
         pass
@@ -35,7 +93,7 @@ class ListModelTest(TestCase):
     def test_str(self):
         list_obj = List()
         list_obj.name = 'list 1'
-        self.assertEqual(list.__str__(), list_obj.name)
+        self.assertEqual(list_obj.__str__(), list_obj.name)
 
     @patch('mailchimper.models.List.mailchimper')
     def test_make_import_new_lists(self, mock_mailchimper):
@@ -49,10 +107,3 @@ class ListModelTest(TestCase):
             for field in List._meta.get_all_field_names():
                 if field in data:
                     self.assertEqual(getattr(list_obj, field), data[field])
-
-
-
-
-
-
-
