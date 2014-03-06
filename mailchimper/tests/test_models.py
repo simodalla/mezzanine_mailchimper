@@ -28,6 +28,11 @@ RESPONSE_ERROR = {
     "name": "Unknown_Exception",
     "error": "An unknown error occurred processing your request. "
              "Please try again later."}
+MEMBERS_RESULT = {
+    "total": 2,
+    "data": [{"id": "member_id_1", "email": "member1@example.com"},
+             {"id": "member_id_2", "email": "member1@example.com"}]
+}
 
 
 class MemberModelTest(TestCase):
