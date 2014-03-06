@@ -7,7 +7,8 @@ try:
 except ImportError:
     from mock import patch
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from ..models import List, Member
@@ -87,9 +88,12 @@ class MemberModelTest(TestCase):
 
 
 class ListModelTest(TestCase):
-    def setUp(self):
-        pass
 
+    # def setUp(self):
+    #     self.list_obj = List.objects.create(id='abc', name='abc',
+    #                                         selectable=True)
+    #     self.user_content_type = ContentType.objects.get_for_model(User)
+    #     self.list_obj.content_types.add(self.user_content_type)
     def test_str(self):
         list_obj = List()
         list_obj.name = 'list 1'
@@ -98,12 +102,27 @@ class ListModelTest(TestCase):
     @patch('mailchimper.models.List.mailchimper')
     def test_make_import_new_lists(self, mock_mailchimper):
         mock_mailchimper.lists.list.return_value = deepcopy(LIST_RESULT)
-        result = List.make_import()
+        lists_created, result = List.make_import()
+        self.assertIsInstance(lists_created, list)
         self.assertIsInstance(result, dict)
         mock_mailchimper.lists.list.assert_is_called_once_with(filters=None)
+        self.assertEqual(len(lists_created), 2)
         self.assertEqual(List.objects.count(), 2)
         for data in LIST_RESULT['data']:
             list_obj = List.objects.get(id=data['id'])
             for field in List._meta.get_all_field_names():
                 if field in data:
                     self.assertEqual(getattr(list_obj, field), data[field])
+
+    def test_import_members_called_with_wrong_ct_raise_exception(self):
+        """
+        Test if calling memmber_called with ContentType that not in
+        self.content_type raise an ValueError
+        """
+        list_obj = List(id='abc', name='abc', selectable=True)
+        list_obj.save()
+        user_content_type = ContentType.objects.get_for_model(User)
+        list_obj.content_types.add(user_content_type)
+        self.assertRaises(ValueError,
+                          list_obj.import_members,
+                          ContentType.objects.get_for_model(Group))

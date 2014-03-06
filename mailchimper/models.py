@@ -9,13 +9,13 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
-from mezzanine.core.models import TimeStamped
+# from mezzanine.core.models import TimeStamped
 
 from .utils import MailchimperModel
 
 
 @python_2_unicode_compatible
-class Member(MailchimperModel, TimeStamped):
+class Member(MailchimperModel, models.Model):
     email = models.EmailField(unique=True)
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
@@ -51,7 +51,7 @@ class Member(MailchimperModel, TimeStamped):
 
 
 @python_2_unicode_compatible
-class List(MailchimperModel, TimeStamped):
+class List(MailchimperModel, models.Model):
     id = models.CharField(_('mailchimp id'), max_length=15, unique=True,
                           editable=False, primary_key=True)
     webid = models.IntegerField(_('mailchimp webid'), unique=True,
@@ -75,14 +75,20 @@ class List(MailchimperModel, TimeStamped):
         mailchimper = cls().mailchimper
         result = mailchimper.lists.list(filters=filters)
         model_fields = cls._meta.get_all_field_names()
-        try:
-            for data in result['data']:
-                list_id = data.pop('id')
-                list_obj, _ = cls.objects.get_or_create(pk=list_id)
-                for field in data:
-                    if field in model_fields:
-                        setattr(list_obj, field, data[field])
-                list_obj.save()
-        except AttributeError:
-            pass
-        return result
+        lists_created = []
+        for data in result['data']:
+            list_id = data.pop('id')
+            list_obj, _ = cls.objects.get_or_create(pk=list_id)
+            for field in data:
+                if field in model_fields:
+                    setattr(list_obj, field, data[field])
+            list_obj.save()
+            lists_created.append(list_obj.pk)
+        return lists_created, result
+
+    def import_members(self, content_type):
+        if content_type not in self.content_types.all():
+            raise ValueError('Content type {content_type} not in '
+                             'content_types'.format(content_type=content_type))
+        result = self.mailchimper.lists.member_info()
+
