@@ -95,5 +95,7 @@ class List(TimeStamped):
         if content_type not in self.content_types.all():
             raise ValueError('Content type {content_type} not in '
                              'content_types'.format(content_type=content_type))
-        result = self.mailchimper.lists.members(self.id)
-
+        result = List.objects.mailchimper.lists.members(self.id)
+        for data in result['data']:
+            print(data['email'])
+        return result

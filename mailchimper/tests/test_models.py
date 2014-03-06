@@ -94,17 +94,12 @@ class MemberModelTest(TestCase):
 
 class ListModelTest(TestCase):
 
-    # def setUp(self):
-    #     self.list_obj = List.objects.create(id='abc', name='abc',
-    #                                         selectable=True)
-    #     self.user_content_type = ContentType.objects.get_for_model(User)
-    #     self.list_obj.content_types.add(self.user_content_type)
     def test_str(self):
         list_obj = List()
         list_obj.name = 'list 1'
         self.assertEqual(list_obj.__str__(), list_obj.name)
 
-    @patch('mailchimper.models.List.mailchimper')
+    @patch('mailchimper.models.MailchimperManager.mailchimper')
     def test_make_import_new_lists(self, mock_mailchimper):
         mock_mailchimper.lists.list.return_value = deepcopy(LIST_RESULT)
         lists_created, result = List.make_import()
@@ -131,3 +126,14 @@ class ListModelTest(TestCase):
         self.assertRaises(ValueError,
                           list_obj.import_members,
                           ContentType.objects.get_for_model(Group))
+
+    @patch('mailchimper.models.MailchimperManager.mailchimper')
+    def test_import_members_call_list_members(self, mock_mailchimper):
+        mock_mailchimper.lists.members.return_value = deepcopy(MEMBERS_RESULT)
+        list_obj = List(id='abc', name='abc', selectable=True)
+        list_obj.save()
+        user_content_type = ContentType.objects.get_for_model(User)
+        list_obj.content_types.add(user_content_type)
+        result = list_obj.import_members(user_content_type)
+        mock_mailchimper.assert_is_called_once_with(list_obj.id)
+        print(result)

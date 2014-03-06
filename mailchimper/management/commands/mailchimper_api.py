@@ -21,4 +21,3 @@ class Command(BaseCommand):
         for mc_list in result_list['data']:
             result_members = mc.lists.members(mc_list['id'])
             pprint.pprint(result_members)
-
