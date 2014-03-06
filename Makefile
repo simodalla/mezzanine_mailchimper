@@ -39,7 +39,7 @@ test-tox-ft:
 	tox -e py26-django16-ft,py27-django16-ft,py33-django16-ft
 
 coverage-console:
-	coverage run --source mailchimper --omit=mailchimper/migrations/*,*/tests/factories.py project_template/manage.py test mailchimper
+	coverage run --source mailchimper --omit=mailchimper/migrations/*,*/tests/factories.py,mailchimper/management/* project_template/manage.py test mailchimper
 	coverage report -m
 
 coverage: coverage-console
