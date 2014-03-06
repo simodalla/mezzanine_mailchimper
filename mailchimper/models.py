@@ -11,26 +11,25 @@ from django.utils.translation import ugettext_lazy as _
 
 from mezzanine.core.models import TimeStamped
 
-from .managers import MailchimperManager
+from .managers import MailchimperManager, MemberManager
 
 
 @python_2_unicode_compatible
 class Member(TimeStamped):
-    email = models.EmailField(unique=True)
-    mailchimp_id = models.CharField(max_length=20, unique=True, editable=False)
-    content_type = models.ForeignKey(ContentType)
-    object_id = models.PositiveIntegerField()
+    id = models.CharField(max_length=20, primary_key=True, editable=False)
+    email = models.EmailField(blank=True, null=True)
+    content_type = models.ForeignKey(ContentType, blank=True, null=True)
+    object_id = models.PositiveIntegerField(blank=True, null=True)
     content_object = generic.GenericForeignKey('content_type', 'object_id')
 
-    objects = MailchimperManager()
+    objects = MemberManager()
 
     class Meta:
-        ordering = ['email']
         verbose_name = _('member')
         verbose_name_plural = _('members')
 
     def __str__(self):
-        return self.email
+        return self.id
 
     def get_object_link(self, url):
         return ('<a href="{url}">{member.content_type.name}: {member.'
@@ -97,5 +96,9 @@ class List(TimeStamped):
                              'content_types'.format(content_type=content_type))
         result = List.objects.mailchimper.lists.members(self.id)
         for data in result['data']:
-            print(data['email'])
+            member, m_created, i_created = (
+                Member.objects.get_or_create_content_type(
+                    data['id'], data['email'], content_type))
+            if not m_created:
+                pass
         return result

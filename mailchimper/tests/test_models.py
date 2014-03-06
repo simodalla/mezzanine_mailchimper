@@ -30,8 +30,7 @@ RESPONSE_ERROR = {
              "Please try again later."}
 MEMBERS_RESULT = {
     "total": 2,
-    "data": [{"id": "member_id_1", "email": "member1@example.com"},
-             {"id": "member_id_2", "email": "member1@example.com"}]
+    "data": [{"id": "member_id_1", "email": "member1@example.com"}]
 }
 
 
@@ -39,13 +38,13 @@ class MemberModelTest(TestCase):
     def setUp(self):
         email = 'mamber1@example.com'
         self.user = User.objects.create_user('member1', email=email)
-        self.member = Member(email=self.user.email, content_object=self.user)
+        self.member = Member(id='abcd', content_object=self.user)
         self.member.save()
 
     def test_str(self):
         member = Member()
-        member.email = 'member@example.com'
-        self.assertEqual(member.__str__(), member.email)
+        member.id = 'abcd'
+        self.assertEqual(member.__str__(), member.id)
 
     def test_get_object_link(self):
         url = '/fake-url/'
@@ -127,13 +126,26 @@ class ListModelTest(TestCase):
                           list_obj.import_members,
                           ContentType.objects.get_for_model(Group))
 
+    @patch('mailchimper.models.MemberManager.get_or_create_content_type')
     @patch('mailchimper.models.MailchimperManager.mailchimper')
-    def test_import_members_call_list_members(self, mock_mailchimper):
-        mock_mailchimper.lists.members.return_value = deepcopy(MEMBERS_RESULT)
-        list_obj = List(id='abc', name='abc', selectable=True)
-        list_obj.save()
+    def test_import_members_call_list_members(
+            self, mock_mailchimper, mock_get_or_create_c_t):
+        members_result = deepcopy(MEMBERS_RESULT)
+        mock_mailchimper.lists.members.return_value = members_result
+        list_obj = List.objects.create(id='abc', name='abc', selectable=True)
         user_content_type = ContentType.objects.get_for_model(User)
         list_obj.content_types.add(user_content_type)
+        user = User.objects.create_user(
+            'member1', email=members_result['data'][0]['email'])
+        member = Member.objects.create(
+            id=members_result['data'][0]['id'],
+            email=members_result['data'][0]['email'],
+            content_object=user)
+        mock_get_or_create_c_t.return_value = member, True, True,
         result = list_obj.import_members(user_content_type)
         mock_mailchimper.assert_is_called_once_with(list_obj.id)
-        print(result)
+        self.assertEqual(result, members_result)
+        mock_get_or_create_c_t.assert_is_called_once(
+            members_result['data'][0]['id'],
+            members_result['data'][0]['email'],
+            user_content_type)
