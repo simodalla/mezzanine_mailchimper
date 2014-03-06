@@ -11,7 +11,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from mezzanine.core.models import TimeStamped
 
-from .managers import MailchimperManager, MemberManager
+from .managers import MemberManager, ListManager
 
 
 @python_2_unicode_compatible
@@ -64,7 +64,7 @@ class List(TimeStamped):
                                      verbose_name=_('members'))
     content_types = models.ManyToManyField(ContentType, blank=True, null=True)
 
-    objects = MailchimperManager()
+    objects = ListManager()
 
     class Meta:
         ordering = ['name']
@@ -73,22 +73,6 @@ class List(TimeStamped):
 
     def __str__(self):
         return self.name
-
-    @classmethod
-    def make_import(cls, request=None, filters=None):
-        mailchimper = cls.objects.mailchimper
-        result = mailchimper.lists.list(filters=filters)
-        model_fields = cls._meta.get_all_field_names()
-        lists_created = []
-        for data in result['data']:
-            list_id = data.pop('id')
-            list_obj, _ = cls.objects.get_or_create(pk=list_id)
-            for field in data:
-                if field in model_fields:
-                    setattr(list_obj, field, data[field])
-            list_obj.save()
-            lists_created.append(list_obj.pk)
-        return lists_created, result
 
     def import_members(self, content_type):
         if content_type not in self.content_types.all():
@@ -99,6 +83,4 @@ class List(TimeStamped):
             member, m_created, i_created = (
                 Member.objects.get_or_create_content_type(
                     data['id'], data['email'], content_type))
-            if not m_created:
-                pass
         return result
