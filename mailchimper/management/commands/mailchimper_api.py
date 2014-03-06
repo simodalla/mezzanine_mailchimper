@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, absolute_import
 
+import pprint
+
 from django.core.management.base import BaseCommand
 
 from mezzanine.conf import settings
 
 from mailchimp import Mailchimp
-
-from ...models import List
 
 
 class Command(BaseCommand):
@@ -20,5 +20,5 @@ class Command(BaseCommand):
         print(result_list)
         for mc_list in result_list['data']:
             result_members = mc.lists.members(mc_list['id'])
-            print(result_members)
+            pprint.pprint(result_members)
 
