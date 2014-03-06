@@ -167,7 +167,7 @@ DATABASES = {
         # Add "postgresql_psycopg2", "mysql", "sqlite3" or "oracle".
         "ENGINE": "django.db.backends.postgresql_psycopg2",
         # DB name or path to database file if using sqlite3.
-        "NAME": "mezzanine_mailchimp",
+        "NAME": "mezzanine_mailchimper",
         # Not used with sqlite3.
         "USER": "",
         # Not used with sqlite3.
