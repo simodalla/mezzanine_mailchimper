@@ -3,8 +3,10 @@ from __future__ import unicode_literals, absolute_import
 
 from copy import deepcopy
 
-from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
+from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
+                                    MultipleObjectsReturned)
 from django.db import models
+from django.db import Error
 
 from mezzanine.conf import settings
 
@@ -15,6 +17,9 @@ class MailchimperManager(models.Manager):
 
     @property
     def mailchimper(self):
+        """
+        Property for get an Mailchimp object
+        """
         settings.use_editable()
         if not getattr(settings, 'MAILCHIMP_API_KEY', None):
             raise ImproperlyConfigured("The MAILCHIMP_API_KEY setting must "
@@ -28,7 +33,7 @@ class ContentObjectMemberManager(models.Manager):
         result = {'email': data['email']}
         return result
 
-    def get_or_create_from_mailchimp(self, data, force_update=True):
+    def get_or_create_for_member(self, data, force_update=False):
         raise NotImplementedError("Implement get_or_create_from_mailchimp"
                                   " method for your manager.")
 
@@ -36,36 +41,74 @@ class ContentObjectMemberManager(models.Manager):
 class UserMemberManager(ContentObjectMemberManager):
 
     def map_data(self, data):
+        """
+        Return a dict in format {'model_field': mailchimp_data}
+
+        :param data: data of Mailchimp.lists.[memebers/member_info] response
+        :type data: dict
+        """
         return {'first_name': data['merges']['FNAME'],
                 'last_name': data['merges']['LNAME']}
 
-    def get_or_create_for_member(self, data, force_update=True):
+    def get_or_create_for_member(self, data, force_update=False):
+        """
+        Return a tuple of two elements, the first is an instance of self.model
+        and the second is True if a new instance of self.model or is False if
+        a instance of self.model is alredy in db.
+
+        :param data: data of Mailchimp.lists.[memebers/member_info] response
+        :type data: dict
+        :param force_update:
+        :type force_update: Bool
+        :rtype: tuple
+        :raise: MultipleObjectsReturned
+        """
         email = data['email']
         try:
-            raise ObjectDoesNotExist()
+            user = self.model.objects.get(models.Q(username=email) |
+                                          models.Q(email=email))
+            return user, False
         except ObjectDoesNotExist:
             user = self.model.objects.create_user(
                 email, email, **self.map_data(data))
-            created = True
-            return user, created
+            return user, True
+        except MultipleObjectsReturned as e:
+            raise e
 
 
 class MemberManager(MailchimperManager):
-    def get_or_create_by_content_type(self, pk, email, content_type,
-                                      force_update_member=False, **kwargs):
-        model_type = content_type.model_class()
+    def create_for_model(self, data, model, force_update_model=False):
+        """
+
+        :param data: data of Mailchimp.lists.[memebers/member_info] response
+        :type data: dict
+        :param model:
+        :type model: django.models.Model with attribute mailchamper that is
+                     a manager child of ContentObjectMemberManager
+        :param force_update_model:
+        :type force_update_model: bool
+        :return:
+        :rtype: tuple
+        """
+        email = data['email']
+        member_id = data['id']
+        model_instance = None
         try:
-            instance = model_type.mailchimper.create_from_mailchimp(
-                email, **kwargs)
-        except NotImplemented:
-            instance = None
-        member, m_created = self.get_or_create(
-            id=pk, defaults={'email': email, 'content_object': instance})
-        if force_update_member and not m_created:
-            member.email = email
-            member.content_object = instance
-            member.save()
-        return member, m_created
+            model_instance, _ = (
+                model.mailchimper.get_or_create_for_member(
+                    data, force_update=force_update_model))
+        except AttributeError as ae:
+            pass
+        except NotImplementedError as nie:
+            pass
+        except MultipleObjectsReturned as moe:
+            pass
+        try:
+            member = self.model.objects.create(id=member_id, email=email,
+                                               content_object=model_instance)
+            return member
+        except Error as e:
+            pass
 
 
 class ListManager(MailchimperManager):
