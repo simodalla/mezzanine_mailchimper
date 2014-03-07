@@ -26,8 +26,12 @@ RESPONSE_ERROR = {
              "Please try again later."}
 MEMBERS_RESULT = {
     "total": 2,
-    "data": [{"id": "member_id_1", "email": "member1@example.com"}]
-}
+    "data": [{"id": "member_id_1", "email": "member1@example.com",
+             'merges': {'EMAIL': 'member1@example.com', 'FNAME': 'Simon',
+                        'GROUPINGS': [], 'LNAME': 'Giveit'}},
+             {"id": "member_id_2", "email": "member2@example.com",
+              'merges': {'EMAIL': 'member2@example.com', 'FNAME': 'John',
+                         'GROUPINGS': [], 'LNAME': 'Red'}}]}
 
 
 class UserF(factory.DjangoModelFactory):

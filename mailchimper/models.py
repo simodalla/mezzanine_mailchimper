@@ -10,8 +10,17 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
 from mezzanine.core.models import TimeStamped
+from mezzanine.utils.models import get_user_model
+User = get_user_model()
 
-from .managers import MemberManager, ListManager
+from .managers import MemberManager, ListManager, UserMemberManager
+
+
+class UserMember(User):
+    mailchimper = UserMemberManager()
+
+    class Meta:
+        proxy = True
 
 
 @python_2_unicode_compatible
@@ -81,6 +90,6 @@ class List(TimeStamped):
         result = List.objects.mailchimper.lists.members(self.id)
         for data in result['data']:
             member, m_created, i_created = (
-                Member.objects.get_or_create_content_type(
+                Member.objects.get_or_create_by_content_type(
                     data['id'], data['email'], content_type))
         return result

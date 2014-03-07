@@ -9,19 +9,29 @@ except ImportError:
     from mock import patch
 
 from django.db import models
-from django.contrib.auth.models import User, Group
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
+
+from mezzanine.utils.models import get_user_model
 
 from mailchimp import Mailchimp
 
-from ..managers import MailchimperManager, ListManager
-from ..models import List
-from .factories import LIST_RESULT
+from ..managers import ContentObjectMemberManager, MailchimperManager, ListManager, UserMemberManager
+from ..models import List, UserMember
+from .factories import LIST_RESULT, MEMBERS_RESULT
+
+User = get_user_model()
 
 
 class DemoMailchimperModel(models.Model):
     objects = MailchimperManager()
+
+
+class WrongDemoContentObjectMemberModel(models.Model):
+    mailchimper = ContentObjectMemberManager()
+
+
+class DemoContentObjectMemberModel(models.Model):
+    pass
 
 
 @patch('mailchimper.managers.settings')
@@ -57,3 +67,35 @@ class ListManagerTest(unittest.TestCase):
             for field in List._meta.get_all_field_names():
                 if field in data:
                     self.assertEqual(getattr(list_obj, field), data[field])
+
+
+class ContentObjectMemberManagerTest(unittest.TestCase):
+
+    def test_call_map_data(self):
+        data = deepcopy(MEMBERS_RESULT['data'][0])
+        map_data = WrongDemoContentObjectMemberModel.mailchimper.map_data(
+            data)
+        self.assertEqual(map_data['email'], data['email'])
+
+    def test_call_get_or_create_from_mailchimp_without_overriding(self):
+        model = WrongDemoContentObjectMemberModel
+        self.assertRaises(NotImplementedError,
+                          model.mailchimper.get_or_create_from_mailchimp, {})
+
+
+class UserMemeberManagerTest(unittest.TestCase):
+    def test_call_map_data(self):
+        data = deepcopy(MEMBERS_RESULT['data'][0])
+        map_data = UserMember.mailchimper.map_data(data)
+        self.assertEqual(map_data['first_name'], data['merges']['FNAME'])
+        self.assertEqual(map_data['last_name'], data['merges']['LNAME'])
+
+    @patch('mailchimper.managers.UserMemberManager.map_data')
+    def test_get_or_create_from_mailchimp_create_user(self, mock_map_data):
+        data = deepcopy(MEMBERS_RESULT['data'][0])
+        mock_map_data.return_value = {'last_name': 'Red',
+                                      'first_name': 'Simon'}
+        user, created = UserMember.mailchimper.get_or_create_for_member(data)
+        mock_map_data.assert_called_once_with(data)
+        # import ipdb
+        # ipdb.set_trace()

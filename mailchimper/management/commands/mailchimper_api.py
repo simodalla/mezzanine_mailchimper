@@ -21,3 +21,7 @@ class Command(BaseCommand):
         for mc_list in result_list['data']:
             result_members = mc.lists.members(mc_list['id'])
             pprint.pprint(result_members)
+            result_info = mc.lists.member_info(
+                mc_list['id'], [{'email': 'sdalla@comune.zolapredosa.bo.it'}])
+            print("***********************")
+            pprint.pprint(result_info)
