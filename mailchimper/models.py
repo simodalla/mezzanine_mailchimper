@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, absolute_import
 
+import json
+import pickle
+import traceback
+from StringIO import StringIO
+
 from django.contrib.admin.templatetags.admin_urls import admin_urlname
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
@@ -34,6 +39,7 @@ class Member(TimeStamped):
     objects = MemberManager()
 
     class Meta:
+        unique_together = ('id', 'content_type')
         verbose_name = _('member')
         verbose_name_plural = _('members')
 
@@ -87,9 +93,47 @@ class List(TimeStamped):
         if content_type not in self.content_types.all():
             raise ValueError('Content type {content_type} not in '
                              'content_types'.format(content_type=content_type))
+        model = content_type.model_class()
+        if model is User:
+            model = UserMember
         result = List.objects.mailchimper.lists.members(self.id)
+        not_imported = []
         for data in result['data']:
-            member, m_created, i_created = (
-                Member.objects.get_or_create_by_content_type(
-                    data['id'], data['email'], content_type))
-        return result
+            member = Member.objects.create_for_model(data['id'], model)
+            if not member:
+                not_imported.append(data)
+        return {'total': result['total'],
+                'imported': result['total'] - len(not_imported),
+                'not_imported_data': not_imported}
+
+
+class Log(TimeStamped):
+    data = models.TextField(blank=True, null=True)
+    traceback = models.TextField(blank=True, null=True)
+    exception = models.TextField(blank=True, null=True)
+    model = models.CharField(max_length=200, blank=True, null=True)
+
+    class Meta:
+        ordering = ['created']
+
+    @classmethod
+    def log(cls, data, exception_, traceback_=None, model=None, **kwargs):
+        instance = cls(data=json.dumps(data),
+                       pexception=pickle.dumps(exception_),
+                       **kwargs)
+        if traceback_:
+            fp = StringIO()
+            traceback.print_exc(file=fp)
+            instance.traceback = fp.getvalue()
+        if model:
+            try:
+                instance.model = model._meta.model_name
+            except AttributeError:
+                instance.model = model._meta.module_name
+        instance.save()
+        return instance
+
+
+
+
+

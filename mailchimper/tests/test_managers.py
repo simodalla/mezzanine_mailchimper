@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, absolute_import
 
-from copy import deepcopy
+import sys
 import unittest
+from copy import deepcopy
 
 try:
-    from unittest.mock import patch
+    from unittest.mock import Mock, patch, ANY
 except ImportError:
-    from mock import patch
+    from mock import Mock, patch, ANY
 
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
@@ -19,9 +20,8 @@ from mezzanine.utils.models import get_user_model
 
 from mailchimp import Mailchimp
 
-from ..managers import (ContentObjectMemberManager, MailchimperManager,
-                        ListManager, UserMemberManager)
-from ..models import List, UserMember, Member
+from ..managers import (ContentObjectMemberManager, MailchimperManager)
+from ..models import List, UserMember, Member, Log
 from .factories import LIST_RESULT, MEMBERS_RESULT
 
 User = get_user_model()
@@ -126,8 +126,77 @@ class UserMemeberManagerTest(TestCase):
                           data)
 
 
+@patch('mailchimper.managers.ContentType.objects.get_for_model')
+@patch('mailchimper.models.Log.log')
 class MemeberManagerTest(TestCase):
-    def test_create_new_member_and_new_instance_of_content_type(self):
+    def test_occours_exception_by_get_or_create_for_member(
+            self, mock_log, mock_get_for_model):
+        """
+        Test that if model.mailchimper.get_or_create_for_member raise an
+        exception this is logged by create Log object
+        """
         data = deepcopy(MEMBERS_RESULT['data'][0])
-        # content_type = ContentType.objects.get_for_model(data, UserMember)
-        member = Member.objects.create_for_model(data, UserMember)
+        mock_model = Mock()
+        exception = MultipleObjectsReturned("Boom!")
+        mock_content_type = Mock()
+        mock_member = Mock()
+        mock_get_for_model.return_value = mock_content_type
+        mock_model.mailchimper.get_or_create_for_member.side_effect = (
+            exception)
+        Member.objects.get_or_create = Mock(return_value=(mock_member, True,))
+
+        Member.objects.create_for_model(data, mock_model)
+
+        mock_model.mailchimper.get_or_create_for_member.\
+            assert_called_once_with(data, force_update=False)
+        mock_log.assert_called_with(data, exception, ANY, model=mock_model)
+
+    def test_occours_exception_by_get_or_create_for_member_return_member(
+            self, mock_log, mock_get_for_model):
+        """
+        Test that if model.mailchimper.get_or_create_for_member raise an
+        exception but self.model.objects.get_or_create
+        """
+        data = deepcopy(MEMBERS_RESULT['data'][0])
+        mock_model = Mock()
+        exception = MultipleObjectsReturned("Boom!")
+        mock_content_type = Mock()
+        mock_member = Mock()
+        mock_get_for_model.return_value = mock_content_type
+        mock_model.mailchimper.get_or_create_for_member.side_effect = (
+            exception)
+        Member.objects.get_or_create = Mock(
+            return_value=(mock_member, True,))
+
+        result = Member.objects.create_for_model(data, mock_model)
+
+        Member.objects.get_or_create.assert_called_once_with(
+            id=data['id'], content_type=mock_content_type,
+            defaults={'email': data['email'], 'content_object': None})
+        self.assertEqual(result, (mock_member, True,))
+        self.assertFalse(mock_member.save.called)
+
+    def test_occours_exception_by_get_or_create_for_member_return_member(
+            self, mock_log, mock_get_for_model):
+        """
+        Test that if model.mailchimper.get_or_create_for_member raise an
+        exception but self.model.objects.get_or_create
+        """
+        data = deepcopy(MEMBERS_RESULT['data'][0])
+        mock_model = Mock()
+        exception = MultipleObjectsReturned("Boom!")
+        mock_content_type = Mock()
+        mock_member = Mock()
+        mock_get_for_model.return_value = mock_content_type
+        mock_model.mailchimper.get_or_create_for_member.side_effect = (
+            exception)
+        Member.objects.get_or_create = Mock(
+            return_value=(mock_member, True,))
+
+        result = Member.objects.create_for_model(data, mock_model)
+
+        Member.objects.get_or_create.assert_called_once_with(
+            id=data['id'], content_type=mock_content_type,
+            defaults={'email': data['email'], 'content_object': None})
+        self.assertEqual(result, (mock_member, True,))
+        self.assertFalse(mock_member.save.called)

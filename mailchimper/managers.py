@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, absolute_import
 
+import json
+import pickle
+import sys
+import traceback
 from copy import deepcopy
+from StringIO import StringIO
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
                                     MultipleObjectsReturned)
 from django.db import models
@@ -77,7 +83,8 @@ class UserMemberManager(ContentObjectMemberManager):
 
 
 class MemberManager(MailchimperManager):
-    def create_for_model(self, data, model, force_update_model=False):
+    def create_for_model(self, data, model,
+                         force_update=False, force_update_model=False):
         """
 
         :param data: data of Mailchimp.lists.[memebers/member_info] response
@@ -90,6 +97,7 @@ class MemberManager(MailchimperManager):
         :return:
         :rtype: tuple
         """
+        from .models import Log
         email = data['email']
         member_id = data['id']
         model_instance = None
@@ -97,18 +105,23 @@ class MemberManager(MailchimperManager):
             model_instance, _ = (
                 model.mailchimper.get_or_create_for_member(
                     data, force_update=force_update_model))
-        except AttributeError as ae:
-            pass
-        except NotImplementedError as nie:
-            pass
-        except MultipleObjectsReturned as moe:
-            pass
+        except Exception as e:
+            type_, value_, traceback_ = sys.exc_info()
+            Log.log(data, value_, traceback_, model=model)
         try:
-            member = self.model.objects.create(id=member_id, email=email,
-                                               content_object=model_instance)
-            return member
-        except Error as e:
-            pass
+            member, created = self.model.objects.get_or_create(
+                id=member_id,
+                content_type=ContentType.objects.get_for_model(model),
+                defaults={'email': email, 'content_object': model_instance})
+            if not created and force_update:
+                member.email = email
+                member.content_object = model_instance
+                member.save()
+            return member, created
+        except Error:
+            type_, value_, traceback_ = sys.exc_info()
+            Log.log(data, value_, traceback_, model=self.model)
+        return False
 
 
 class ListManager(MailchimperManager):
