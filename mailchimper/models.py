@@ -99,7 +99,7 @@ class List(TimeStamped):
         result = List.objects.mailchimper.lists.members(self.id)
         not_imported = []
         for data in result['data']:
-            member = Member.objects.create_for_model(data['id'], model)
+            member = Member.objects.get_or_create_for_model(data['id'], model)
             if not member:
                 not_imported.append(data)
         return {'total': result['total'],

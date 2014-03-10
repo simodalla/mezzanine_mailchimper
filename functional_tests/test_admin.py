@@ -12,16 +12,13 @@ from .base import FunctionalTest
 class ListAdminTest(FunctionalTest):
     def setUp(self):
         self.admin = AdminF()
-        # print(self.admin)
         self.create_pre_authenticated_session(self.admin)
         self.changelist_url = self.get_url(
             admin_urlname(List._meta, 'changelist'))
 
     def test_changelist_view(self):
         lists = [ListF() for i in range(0, 2)]
+        print(lists)
         self.browser.get(self.changelist_url)
         import ipdb
         ipdb.set_trace()
-
-
-

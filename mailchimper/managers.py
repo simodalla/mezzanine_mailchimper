@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, absolute_import
 
-import json
-import pickle
 import sys
-import traceback
-from copy import deepcopy
-from StringIO import StringIO
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
@@ -83,19 +78,24 @@ class UserMemberManager(ContentObjectMemberManager):
 
 
 class MemberManager(MailchimperManager):
-    def create_for_model(self, data, model,
-                         force_update=False, force_update_model=False):
+    def get_or_create_for_model(self, data, model, force_update=False,
+                                force_update_model=False):
         """
+        Get or create an Member object (and his content_object object)
+        with data from  Mailchimp.lists.[memebers/member_info] response.
 
         :param data: data of Mailchimp.lists.[memebers/member_info] response
         :type data: dict
-        :param model:
-        :type model: django.models.Model with attribute mailchamper that is
+        :param model: django.models.Model with attribute mailchamper that is
                      a manager child of ContentObjectMemberManager
+        :type model: django.models.Model
         :param force_update_model:
-        :type force_update_model: bool
-        :return:
-        :rtype: tuple
+        :type force_update_model: Bool
+        :param force_update_model:
+        :type force_update_model: Bool
+        :return: tuple with Member object selected or create an a boolean
+                 indicate if object is selected or created
+        :rtype: (Member object, Bool) or None
         """
         from .models import Log
         email = data['email']
@@ -105,7 +105,7 @@ class MemberManager(MailchimperManager):
             model_instance, _ = (
                 model.mailchimper.get_or_create_for_member(
                     data, force_update=force_update_model))
-        except Exception as e:
+        except Exception:
             type_, value_, traceback_ = sys.exc_info()
             Log.log(data, value_, traceback_, model=model)
         try:
@@ -121,12 +121,14 @@ class MemberManager(MailchimperManager):
         except Error:
             type_, value_, traceback_ = sys.exc_info()
             Log.log(data, value_, traceback_, model=self.model)
-        return False
 
 
 class ListManager(MailchimperManager):
 
     def import_lists(self, filters=None, request=None):
+        """
+
+        """
         result = self.mailchimper.lists.list(filters=filters)
         model_fields = self.model._meta.get_all_field_names()
         lists_created = []

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, absolute_import
 
-from copy import deepcopy
 try:
     from unittest.mock import patch
 except ImportError:
@@ -12,7 +11,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from ..models import List, Member
-from .factories import LIST_RESULT, MEMBERS_RESULT
 
 
 class MemberModelTest(TestCase):
