@@ -57,7 +57,7 @@ class ListManagerTest(unittest.TestCase):
     @patch('mailchimper.models.ListManager.mailchimper')
     def test_make_import_new_lists(self, mock_mailchimper):
         mock_mailchimper.lists.list.return_value = deepcopy(LIST_RESULT)
-        lists_created, result = List.objects.import_lists()
+        lists_created, result = List.objects.import_list()
         self.assertIsInstance(lists_created, list)
         self.assertIsInstance(result, dict)
         mock_mailchimper.lists.list.assert_is_called_once_with(filters=None)

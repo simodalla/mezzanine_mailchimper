@@ -125,9 +125,12 @@ class MemberManager(MailchimperManager):
 
 class ListManager(MailchimperManager):
 
-    def import_lists(self, filters=None, request=None):
+    def import_list(self, filters=None, request=None):
         """
 
+        :param filters:
+        :param request:
+        :return:
         """
         result = self.mailchimper.lists.list(filters=filters)
         model_fields = self.model._meta.get_all_field_names()

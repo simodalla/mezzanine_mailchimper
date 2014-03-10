@@ -67,8 +67,7 @@ urlpatterns += patterns('',
     # WILL NEVER BE MATCHED!
 
 
-    # ("^%s/" % settings.NOWAIT_ROOT_SLUG, include("nowait.urls",
-    #                                              namespace='nowait')),
+    ("^mailchimper/", include("mailchimper.urls", namespace='mailchimper')),
 
     # If you'd like more granular control over the patterns in
     # ``mezzanine.urls``, go right ahead and take the parts you want

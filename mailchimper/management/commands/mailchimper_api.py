@@ -16,7 +16,8 @@ class Command(BaseCommand):
     def handle(self, *apps, **options):
         settings.use_editable()
         mc = Mailchimp(settings.MAILCHIMP_API_KEY)
-        result_list = mc.lists.list()
+        result_list = mc.lists.list(filters={})
+        # result_list = mc.lists.list(filters={'list_name': 'list_2'})
         print(result_list)
         for mc_list in result_list['data']:
             result_members = mc.lists.members(mc_list['id'])
